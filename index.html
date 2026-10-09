@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento de Boleto</title>
+    <!-- Tipografia Oficial Ciclo: Chillax -->
+    <link href="https://api.fontshare.com/v2/css?f[]=chillax@500,600,700&display=swap" rel="stylesheet">
+    <!-- Gerador de Código de Barras -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        :root {
+            --ciclo-navy: #283576;
+            --ciclo-magenta: #EA0888;
+            --ciclo-blue: #62C7F2;
+            --ciclo-bg: #F4F6FB;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Chillax', sans-serif;
+        }
+
+        body {
+            background-color: var(--ciclo-bg);
+            color: var(--ciclo-navy);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .card {
+            background: #FFFFFF;
+            border-radius: 20px;
+            padding: 32px 24px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 12px 30px rgba(40, 53, 118, 0.08);
+            text-align: center;
+        }
+
+        .alert-toast {
+            background-color: #E6F8F0;
+            color: #0D6832;
+            border: 1px solid #A3E6C0;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .instruction-text {
+            font-size: 15px;
+            color: var(--ciclo-navy);
+            margin-bottom: 16px;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .code-box {
+            background: #F8FAFC;
+            border: 1.5px dashed var(--ciclo-blue);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--ciclo-navy);
+            word-break: break-all;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .btn-copy {
+            background-color: var(--ciclo-navy);
+            color: #FFFFFF;
+            border: none;
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-copy:hover {
+            background-color: #1d2757;
+        }
+
+        .barcode-container {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #E2E8F0;
+        }
+
+        svg#barcode {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div id="alert-toast" class="alert-toast">
+            ✅ Código copiado com sucesso!
+        </div>
+
+        <p class="instruction-text">
+            Para realizar o pagamento, copie o código abaixo e cole no app do seu banco:
+        </p>
+
+        <div id="code-display" class="code-box">Carregando código...</div>
+
+        <button class="btn-copy" onclick="copiarCodigo()">Copiar código</button>
+
+        <div class="barcode-container">
+            <svg id="barcode"></svg>
+        </div>
+    </div>
+
+    <script>
+        // Pega o código vindo na URL (?codigo=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const codigo = urlParams.get('codigo') || "237933812860083013528560000633077890000015000";
+
+        const codeDisplay = document.getElementById('code-display');
+        const alertToast = document.getElementById('alert-toast');
+
+        function copiarCodigo() {
+            if (!codigo) return;
+            
+            navigator.clipboard.writeText(codigo).then(() => {
+                alertToast.style.display = 'block';
+                setTimeout(() => {
+                    alertToast.style.display = 'none';
+                }, 3000);
+            }).catch(err => {
+                console.log("Erro ao copiar: ", err);
+            });
+        }
+
+        if (codigo) {
+            codeDisplay.innerText = codigo;
+
+            // Renderiza o código de barras
+            JsBarcode("#barcode", codigo, {
+                format: "CODE128",
+                lineColor: "#283576",
+                width: 2,
+                height: 60,
+                displayValue: false
+            });
+
+            // Executa a cópia automática na abertura
+            window.addEventListener('DOMContentLoaded', () => {
+                copiarCodigo();
+            });
+        }
+    </script>
+</body>
+</html>
