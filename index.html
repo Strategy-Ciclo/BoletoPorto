@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pagamento de Boleto | Ciclo</title>
+    <!-- Fonte Oficial: Chillax -->
     <link href="https://api.fontshare.com/v2/css?f[]=chillax@500,600,700&display=swap" rel="stylesheet">
+    <!-- Gerador de Código de Barras -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         :root {
@@ -56,11 +58,10 @@
             line-height: 1.4;
         }
 
-        /* Campo de validação do CPF */
         .cpf-input {
-            width: 120px;
+            width: 140px;
             padding: 12px;
-            font-size: 20px;
+            font-size: 22px;
             text-align: center;
             letter-spacing: 4px;
             border: 2px solid var(--ciclo-blue);
@@ -115,7 +116,6 @@
 
         svg#barcode { max-width: 100%; height: auto; }
 
-        /* Área do Boleto (escondida por padrão) */
         #boleto-content { display: none; }
     </style>
 </head>
@@ -126,17 +126,17 @@
             ✅ Código copiado com sucesso!
         </div>
 
-        <!-- ETAPA 1: Trava de Segurança (CPF) -->
+        <!-- TELA 1: Trava de CPF -->
         <div id="lock-screen">
             <p class="instruction-text">
                 Por segurança, digite os <strong>3 primeiros dígitos do seu CPF</strong> para acessar o boleto:
             </p>
-            <input type="tel" id="cpfInput" class="cpf-input" maxlength="3" placeholder="123" autocomplete="off" />
+            <input type="tel" id="cpfInput" class="cpf-input" maxlength="3" placeholder="000" autocomplete="off" />
             <div id="errorMsg" class="error-msg">⚠️ Dígitos incorretos. Tente novamente.</div>
             <button class="btn-action" onclick="validarCPF()">Acessar Boleto</button>
         </div>
 
-        <!-- ETAPA 2: Conteúdo do Boleto (Liberado após validação) -->
+        <!-- TELA 2: Boleto Liberado -->
         <div id="boleto-content">
             <p class="instruction-text">
                 Para realizar o pagamento, copie o código abaixo e cole no app do seu banco:
@@ -162,9 +162,9 @@
         
         let dadosCliente = null;
 
-        // Busca as informações do JSON na abertura da página
+        // Busca o JSON forçando a atualização do cache (?v=timestamp)
         if (idChave) {
-            fetch('./dados.json')
+            fetch('./dados.json?v=' + new Date().getTime())
                 .then(response => response.json())
                 .then(dados => {
                     if (dados[idChave]) {
@@ -174,22 +174,28 @@
                     }
                 })
                 .catch(() => {
-                    document.getElementById('lock-screen').innerHTML = "<p>Erro ao carregar os dados.</p>";
+                    document.getElementById('lock-screen').innerHTML = "<p>Erro ao carregar os dados do boleto.</p>";
                 });
         }
 
-        // Valida se os 3 dígitos conferem
         function validarCPF() {
             const inputVal = document.getElementById('cpfInput').value.trim();
             
-            if (dadosCliente && inputVal === dadosCliente.cpf) {
-                // Sucesso: Esconde a trava e exibe o boleto
-                document.getElementById('lock-screen').style.display = 'none';
-                document.getElementById('boleto-content').style.display = 'block';
-                
-                renderizarBoleto(dadosCliente.cod);
+            if (dadosCliente && dadosCliente.cpf !== undefined) {
+                // Garante que ambos sejam tratados estritamente como TEXTO (string)
+                const cpfEsperado = String(dadosCliente.cpf).trim().padStart(3, '0');
+                const cpfDigitado = String(inputVal).trim().padStart(3, '0');
+
+                if (cpfDigitado === cpfEsperado) {
+                    errorMsg.style.display = 'none';
+                    document.getElementById('lock-screen').style.display = 'none';
+                    document.getElementById('boleto-content').style.display = 'block';
+                    
+                    renderizarBoleto(dadosCliente.cod);
+                } else {
+                    errorMsg.style.display = 'block';
+                }
             } else {
-                // Erro: Exibe mensagem de aviso
                 errorMsg.style.display = 'block';
             }
         }
@@ -200,7 +206,7 @@
             navigator.clipboard.writeText(dadosCliente.cod).then(() => {
                 alertToast.style.display = 'block';
                 setTimeout(() => { alertToast.style.display = 'none'; }, 3000);
-            });
+            }).catch(err => console.log("Erro ao copiar: ", err));
         }
 
         function renderizarBoleto(codigo) {
@@ -214,7 +220,7 @@
                 displayValue: false
             });
 
-            // Executa a cópia automática assim que valida o CPF
+            // Copia automaticamente assim que o CPF é validado
             copiarCodigo();
         }
     </script>
