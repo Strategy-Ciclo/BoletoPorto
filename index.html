@@ -126,7 +126,7 @@
             ✅ Código copiado com sucesso!
         </div>
 
-        <!-- TELA 1: Trava de CPF -->
+        <!-- TELA 1: Trava de Segurança (CPF) -->
         <div id="lock-screen">
             <p class="instruction-text">
                 Por segurança, digite os <strong>3 primeiros dígitos do seu CPF</strong> para acessar o boleto:
@@ -136,7 +136,7 @@
             <button class="btn-action" onclick="validarCPF()">Acessar Boleto</button>
         </div>
 
-        <!-- TELA 2: Boleto Liberado -->
+        <!-- TELA 2: Conteúdo do Boleto (Liberado após validação) -->
         <div id="boleto-content">
             <p class="instruction-text">
                 Para realizar o pagamento, copie o código abaixo e cole no app do seu banco:
@@ -159,10 +159,19 @@
         const codeDisplay = document.getElementById('code-display');
         const alertToast = document.getElementById('alert-toast');
         const errorMsg = document.getElementById('errorMsg');
+        const cpfInput = document.getElementById('cpfInput');
         
         let dadosCliente = null;
 
-        // Busca o JSON forçando a atualização do cache (?v=timestamp)
+        // Permite enviar apertando a tecla Enter
+        cpfInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                validarCPF();
+            }
+        });
+
+        // Busca o JSON forçando atualização de cache (?v=timestamp)
         if (idChave) {
             fetch('./dados.json?v=' + new Date().getTime())
                 .then(response => response.json())
@@ -170,23 +179,23 @@
                     if (dados[idChave]) {
                         dadosCliente = dados[idChave];
                     } else {
-                        document.getElementById('lock-screen').innerHTML = "<p>Boleto não encontrado.</p>";
+                        document.getElementById('lock-screen').innerHTML = "<p style='color:#d9534f; font-weight:600;'>Boleto não encontrado.</p>";
                     }
                 })
                 .catch(() => {
-                    document.getElementById('lock-screen').innerHTML = "<p>Erro ao carregar os dados do boleto.</p>";
+                    document.getElementById('lock-screen').innerHTML = "<p style='color:#d9534f; font-weight:600;'>Erro ao carregar os dados.</p>";
                 });
         }
 
         function validarCPF() {
-            const inputVal = document.getElementById('cpfInput').value.trim();
+            // Pega exatamente o texto digitado e remove caracteres não numéricos
+            const digitado = String(cpfInput.value).replace(/\D/g, '').trim().padStart(3, '0');
             
             if (dadosCliente && dadosCliente.cpf !== undefined) {
-                // Garante que ambos sejam tratados estritamente como TEXTO (string)
-                const cpfEsperado = String(dadosCliente.cpf).trim().padStart(3, '0');
-                const cpfDigitado = String(inputVal).trim().padStart(3, '0');
+                // Trata estritamente como texto garantindo 3 dígitos
+                const esperado = String(dadosCliente.cpf).replace(/\D/g, '').trim().padStart(3, '0');
 
-                if (cpfDigitado === cpfEsperado) {
+                if (digitado === esperado) {
                     errorMsg.style.display = 'none';
                     document.getElementById('lock-screen').style.display = 'none';
                     document.getElementById('boleto-content').style.display = 'block';
@@ -220,7 +229,7 @@
                 displayValue: false
             });
 
-            // Copia automaticamente assim que o CPF é validado
+            // Executa a cópia automática assim que o CPF é validado
             copiarCodigo();
         }
     </script>
