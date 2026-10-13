@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pagamento de Boleto</title>
-    <!-- Tipografia Oficial Ciclo: Chillax -->
     <link href="https://api.fontshare.com/v2/css?f[]=chillax@500,600,700&display=swap" rel="stylesheet">
-    <!-- Gerador de Código de Barras -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         :root {
@@ -16,12 +14,7 @@
             --ciclo-bg: #F4F6FB;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Chillax', sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Chillax', sans-serif; }
 
         body {
             background-color: var(--ciclo-bg);
@@ -89,9 +82,7 @@
             transition: background-color 0.2s ease;
         }
 
-        .btn-copy:hover {
-            background-color: #1d2757;
-        }
+        .btn-copy:hover { background-color: #1d2757; }
 
         .barcode-container {
             margin-top: 24px;
@@ -99,10 +90,7 @@
             border-top: 1px solid #E2E8F0;
         }
 
-        svg#barcode {
-            max-width: 100%;
-            height: auto;
-        }
+        svg#barcode { max-width: 100%; height: auto; }
     </style>
 </head>
 <body>
@@ -126,30 +114,27 @@
     </div>
 
     <script>
-        // Pega o código vindo na URL (?codigo=...)
         const urlParams = new URLSearchParams(window.location.search);
-        const codigo = urlParams.get('codigo') || "237933812860083013528560000633077890000015000";
-
+        const idChave = urlParams.get('id');
+        const codigoDireto = urlParams.get('codigo');
+        
         const codeDisplay = document.getElementById('code-display');
         const alertToast = document.getElementById('alert-toast');
+        let codigoFinal = "";
 
         function copiarCodigo() {
-            if (!codigo) return;
+            if (!codigoFinal) return;
             
-            navigator.clipboard.writeText(codigo).then(() => {
+            navigator.clipboard.writeText(codigoFinal).then(() => {
                 alertToast.style.display = 'block';
-                setTimeout(() => {
-                    alertToast.style.display = 'none';
-                }, 3000);
-            }).catch(err => {
-                console.log("Erro ao copiar: ", err);
-            });
+                setTimeout(() => { alertToast.style.display = 'none'; }, 3000);
+            }).catch(err => console.log("Erro ao copiar: ", err));
         }
 
-        if (codigo) {
+        function renderizarBoleto(codigo) {
+            codigoFinal = codigo;
             codeDisplay.innerText = codigo;
 
-            // Renderiza o código de barras
             JsBarcode("#barcode", codigo, {
                 format: "CODE128",
                 lineColor: "#283576",
@@ -158,10 +143,29 @@
                 displayValue: false
             });
 
-            // Executa a cópia automática na abertura
-            window.addEventListener('DOMContentLoaded', () => {
-                copiarCodigo();
-            });
+            copiarCodigo();
+        }
+
+        // Lógica principal
+        if (idChave) {
+            // Busca a chave dentro do dados.json
+            fetch('./dados.json')
+                .then(response => response.json())
+                .then(dados => {
+                    if (dados[idChave]) {
+                        renderizarBoleto(dados[idChave]);
+                    } else {
+                        codeDisplay.innerText = "Código de boleto não encontrado.";
+                    }
+                })
+                .catch(err => {
+                    codeDisplay.innerText = "Erro ao carregar dados do boleto.";
+                });
+        } else if (codigoDireto) {
+            // Suporte para o modo legado enviando a URL completa
+            renderizarBoleto(codigoDireto);
+        } else {
+            codeDisplay.innerText = "Nenhum código fornecido na URL.";
         }
     </script>
 </body>
