@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento de Boleto</title>
+    <title>Pagamento de Boleto | Ciclo</title>
     <link href="https://api.fontshare.com/v2/css?f[]=chillax@500,600,700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
@@ -56,6 +56,29 @@
             line-height: 1.4;
         }
 
+        /* Campo de validação do CPF */
+        .cpf-input {
+            width: 120px;
+            padding: 12px;
+            font-size: 20px;
+            text-align: center;
+            letter-spacing: 4px;
+            border: 2px solid var(--ciclo-blue);
+            border-radius: 10px;
+            outline: none;
+            margin-bottom: 16px;
+            font-weight: bold;
+            color: var(--ciclo-navy);
+        }
+
+        .error-msg {
+            color: #d9534f;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: none;
+        }
+
         .code-box {
             background: #F8FAFC;
             border: 1.5px dashed var(--ciclo-blue);
@@ -69,7 +92,7 @@
             font-weight: 600;
         }
 
-        .btn-copy {
+        .btn-action {
             background-color: var(--ciclo-navy);
             color: #FFFFFF;
             border: none;
@@ -82,7 +105,7 @@
             transition: background-color 0.2s ease;
         }
 
-        .btn-copy:hover { background-color: #1d2757; }
+        .btn-action:hover { background-color: #1d2757; }
 
         .barcode-container {
             margin-top: 24px;
@@ -91,6 +114,9 @@
         }
 
         svg#barcode { max-width: 100%; height: auto; }
+
+        /* Área do Boleto (escondida por padrão) */
+        #boleto-content { display: none; }
     </style>
 </head>
 <body>
@@ -100,39 +126,84 @@
             ✅ Código copiado com sucesso!
         </div>
 
-        <p class="instruction-text">
-            Para realizar o pagamento, copie o código abaixo e cole no app do seu banco:
-        </p>
+        <!-- ETAPA 1: Trava de Segurança (CPF) -->
+        <div id="lock-screen">
+            <p class="instruction-text">
+                Por segurança, digite os <strong>3 primeiros dígitos do seu CPF</strong> para acessar o boleto:
+            </p>
+            <input type="tel" id="cpfInput" class="cpf-input" maxlength="3" placeholder="123" autocomplete="off" />
+            <div id="errorMsg" class="error-msg">⚠️ Dígitos incorretos. Tente novamente.</div>
+            <button class="btn-action" onclick="validarCPF()">Acessar Boleto</button>
+        </div>
 
-        <div id="code-display" class="code-box">Carregando código...</div>
+        <!-- ETAPA 2: Conteúdo do Boleto (Liberado após validação) -->
+        <div id="boleto-content">
+            <p class="instruction-text">
+                Para realizar o pagamento, copie o código abaixo e cole no app do seu banco:
+            </p>
 
-        <button class="btn-copy" onclick="copiarCodigo()">Copiar código</button>
+            <div id="code-display" class="code-box">Carregando código...</div>
 
-        <div class="barcode-container">
-            <svg id="barcode"></svg>
+            <button class="btn-action" onclick="copiarCodigo()">Copiar código</button>
+
+            <div class="barcode-container">
+                <svg id="barcode"></svg>
+            </div>
         </div>
     </div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const idChave = urlParams.get('id');
-        const codigoDireto = urlParams.get('codigo');
         
         const codeDisplay = document.getElementById('code-display');
         const alertToast = document.getElementById('alert-toast');
-        let codigoFinal = "";
+        const errorMsg = document.getElementById('errorMsg');
+        
+        let dadosCliente = null;
+
+        // Busca as informações do JSON na abertura da página
+        if (idChave) {
+            fetch('./dados.json')
+                .then(response => response.json())
+                .then(dados => {
+                    if (dados[idChave]) {
+                        dadosCliente = dados[idChave];
+                    } else {
+                        document.getElementById('lock-screen').innerHTML = "<p>Boleto não encontrado.</p>";
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('lock-screen').innerHTML = "<p>Erro ao carregar os dados.</p>";
+                });
+        }
+
+        // Valida se os 3 dígitos conferem
+        function validarCPF() {
+            const inputVal = document.getElementById('cpfInput').value.trim();
+            
+            if (dadosCliente && inputVal === dadosCliente.cpf) {
+                // Sucesso: Esconde a trava e exibe o boleto
+                document.getElementById('lock-screen').style.display = 'none';
+                document.getElementById('boleto-content').style.display = 'block';
+                
+                renderizarBoleto(dadosCliente.cod);
+            } else {
+                // Erro: Exibe mensagem de aviso
+                errorMsg.style.display = 'block';
+            }
+        }
 
         function copiarCodigo() {
-            if (!codigoFinal) return;
+            if (!dadosCliente) return;
             
-            navigator.clipboard.writeText(codigoFinal).then(() => {
+            navigator.clipboard.writeText(dadosCliente.cod).then(() => {
                 alertToast.style.display = 'block';
                 setTimeout(() => { alertToast.style.display = 'none'; }, 3000);
-            }).catch(err => console.log("Erro ao copiar: ", err));
+            });
         }
 
         function renderizarBoleto(codigo) {
-            codigoFinal = codigo;
             codeDisplay.innerText = codigo;
 
             JsBarcode("#barcode", codigo, {
@@ -143,29 +214,8 @@
                 displayValue: false
             });
 
+            // Executa a cópia automática assim que valida o CPF
             copiarCodigo();
-        }
-
-        // Lógica principal
-        if (idChave) {
-            // Busca a chave dentro do dados.json
-            fetch('./dados.json')
-                .then(response => response.json())
-                .then(dados => {
-                    if (dados[idChave]) {
-                        renderizarBoleto(dados[idChave]);
-                    } else {
-                        codeDisplay.innerText = "Código de boleto não encontrado.";
-                    }
-                })
-                .catch(err => {
-                    codeDisplay.innerText = "Erro ao carregar dados do boleto.";
-                });
-        } else if (codigoDireto) {
-            // Suporte para o modo legado enviando a URL completa
-            renderizarBoleto(codigoDireto);
-        } else {
-            codeDisplay.innerText = "Nenhum código fornecido na URL.";
         }
     </script>
 </body>
